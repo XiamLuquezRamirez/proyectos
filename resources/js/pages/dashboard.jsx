@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePage } from '@inertiajs/react';
+import { usePage, Head, Link } from '@inertiajs/react';
 import { Award, BarChart2, Calendar as CalendarIcon, Clock, Eye, Heart, Home, MapPin, Search, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
@@ -335,7 +335,9 @@ export default function Dashboard() {
     // Componente para el menú lateral
     const SideNavbar = () => {
         return (
+            
             <div className="fixed top-0 bottom-0 left-0 flex h-screen w-[80px] flex-col items-center bg-indigo-600 py-6">
+                
                 {/* Perfil de usuario */}
                 <div className="mb-8 flex flex-col items-center gap-2">
                     <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white/30 bg-white/20">
@@ -361,17 +363,21 @@ export default function Dashboard() {
                     <button className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-colors hover:bg-indigo-500">
                         <CalendarIcon className="h-6 w-6" />
                     </button>
-                    <button className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-colors hover:bg-indigo-500">
-                        <BarChart2 className="h-6 w-6" />
-                    </button>
+                   
+                        <button className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-colors hover:bg-indigo-500">
+                            <BarChart2 className="h-6 w-6" />
+                        </button>
+                    
                     
                 </div>
 
                 {/* Configuración (en la parte inferior) */}
                 <div className="mt-auto">
+                     <Link href={route('parametros')}>
                     <button className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-colors hover:bg-indigo-500">
                         <Settings className="h-6 w-6" />
                     </button>
+                    </Link>
                 </div>
             </div>
         );
@@ -560,6 +566,9 @@ export default function Dashboard() {
 
     return (
         <>
+            {/* Agregar componente Head para cambiar el título de la página */}
+            <Head title="Dashboard - Gestión de Proyectos" />
+            
             <div className="min-h-screen bg-gray-100">
                 {/* Menú lateral */}
                 <SideNavbar />
