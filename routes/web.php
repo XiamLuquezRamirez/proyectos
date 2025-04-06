@@ -28,6 +28,9 @@ Route::post('/parametros/usuarios', [UsuarioController::class, 'listarUsuarios']
 Route::post('/parametros/proyectos', [ParametrosController::class, 'listarProyectos'])
     ->middleware(['auth']);
 
+Route::post('/parametros/guardarProyectos', [ParametrosController::class, 'guardarProyectos'])
+    ->middleware(['auth']);
+
     
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

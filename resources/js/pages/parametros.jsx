@@ -1,45 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { usePage, Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { Label } from '@/components/ui/label';
-import { BarChart2, UserIcon, Calendar, FolderIcon, Settings, ChevronLeft, Plus, Edit, Trash2, Search, MapPin, Clock, Shield } from 'lucide-react';
+import { Calendar, ChevronLeft, Clock, Edit, FolderIcon, MapPin, Plus, Search, Settings, Shield, Trash2, UserIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
+import CardParametros from '../components/ui/cardParametros';
+import TablaRegistros from '../components/ui/tablaRegistros';
 
 export default function Parametros() {
     const { auth } = usePage().props;
     const [selectedCard, setSelectedCard] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [activeTab, setActiveTab] = useState('informacion');
-    
+
     // Datos de ejemplo para usuarios - Mover esto aquí para que esté disponible globalmente
-    const usuariosEjemplo = [
+    const usuariosData = [
         { id: 1, nombre: 'Ana Martinez', username: 'amartinez', rol: 'Administrador', email: 'ana.martinez@ejemplo.com' },
         { id: 2, nombre: 'Carlos Gomez', username: 'cgomez', rol: 'Coordinador', email: 'carlos.gomez@ejemplo.com' },
         { id: 3, nombre: 'Laura Torres', username: 'ltorres', rol: 'Analista', email: 'laura.torres@ejemplo.com' },
     ];
-    
+
     // Estado para almacenar los usuarios cargados desde el servidor
     const [usuarios, setUsuarios] = useState([]);
     const [municipios, setMunicipios] = useState([]);
     const [proyectos, setProyectos] = useState([]);
     const [presupuesto, setPresupuesto] = useState(0);
+    const [newProject, setNewProject] = useState({
+        nombre: '',
+        descripcion: '',
+        municipio: '',
+        fechaInicio: '',
+        fase: '',
+        estado: '',
+        presupuesto: '',
+        responsable: '',
+        categoria: '',
+    });
+
     // Estado para controlar errores y carga
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     // Datos simulados específicos para cada categoría
     const proyectosData = [
-        { id: 1, nombre: 'Proyecto de Infraestructura Vial', descripcion: 'Pavimentación de calles principales', municipio: 'Agua Chica', estado: 'Activo' },
+        {
+            id: 1,
+            nombre: 'Proyecto de Infraestructura Vial',
+            descripcion: 'Pavimentación de calles principales',
+            municipio: 'Agua Chica',
+            estado: 'Activo',
+        },
         { id: 2, nombre: 'Centro Comunitario', descripcion: 'Construcción de centro comunitario', municipio: 'San Juan', estado: 'Activo' },
         { id: 3, nombre: 'Escuela Municipal', descripcion: 'Remodelación de escuela primaria', municipio: 'Villa Nueva', estado: 'Inactivo' },
     ];
 
     const estadosData = [
-        { id: 1, nombre: 'Formulación', descripcion: 'Proyecto en etapa de formulación' },
-        { id: 2, nombre: 'Viabilidad', descripcion: 'Proyecto en etapa de viabilidad' },
-        { id: 3, nombre: 'Licitación', descripcion: 'Proyecto en etapa de licitación' },
-        { id: 4, nombre: 'Ejecución', descripcion: 'Proyecto en etapa de ejecución' },
-        { id: 5, nombre: 'Liquidado', descripcion: 'Proyecto liquidado' },
-        { id: 6, nombre: 'Finalizado', descripcion: 'Proyecto finalizado' },
+        { nombre: 'Formulación', descripcion: 'Proyecto en etapa de formulación' },
+        { nombre: 'Viabilidad', descripcion: 'Proyecto en etapa de viabilidad' },
+        { nombre: 'Licitación', descripcion: 'Proyecto en etapa de licitación' },
+        { nombre: 'Ejecución', descripcion: 'Proyecto en etapa de ejecución' },
+        { nombre: 'Liquidado', descripcion: 'Proyecto liquidado' },
+        { nombre: 'Finalizado', descripcion: 'Proyecto finalizado' },
     ];
 
     const eventosData = [
@@ -48,21 +68,84 @@ export default function Parametros() {
         { id: 3, descripcion: 'Inspección técnica', responsable: 'Laura Torres', fecha: '2023-09-25', hora: '10:00', tipo: 'Otro' },
     ];
 
+    // Agregar estados necesarios para contratos
+    const [showContractsTab, setShowContractsTab] = useState(false);
+    const [showContractModal, setShowContractModal] = useState(false);
+    const [contractsData, setContractsData] = useState([
+        {
+            id: 1,
+            numero: 'CTR-2023-001',
+            tipo: 'Obra',
+            contratista: 'Constructora ABC',
+            valor: '$125,000,000',
+            fechaFirma: '2023-05-15',
+            duracion: '6 meses',
+        },
+        {
+            id: 2,
+            numero: 'CTR-2023-002',
+            tipo: 'Consultoría',
+            contratista: 'Ingeniería XYZ',
+            valor: '$45,000,000',
+            fechaFirma: '2023-06-20',
+            duracion: '3 meses',
+        },
+    ]);
+    const [newContract, setNewContract] = useState({
+        numero: '',
+        tipo: '',
+        contratista: '',
+        valor: '',
+        fechaFirma: '',
+        duracion: '',
+        objeto: '',
+    });
+
+    // Estados para controlar la visibilidad y datos de anexos
+    const [showAnnexesTab, setShowAnnexesTab] = useState(false);
+    const [showAnnexModal, setShowAnnexModal] = useState(false);
+    const [annexesData, setAnnexesData] = useState([
+        {
+            id: 1,
+            nombre: 'Acta_Inicio.pdf',
+            tipo: 'Acta',
+            comentarios: 'Documento firmado por ambas partes',
+            fechaCarga: '2023-08-10',
+            tamaño: '1.5 MB',
+        },
+        {
+            id: 2,
+            nombre: 'Poliza_Cumplimiento.pdf',
+            tipo: 'Póliza',
+            comentarios: 'Póliza de garantía y cumplimiento',
+            fechaCarga: '2023-08-12',
+            tamaño: '850 KB',
+        },
+    ]);
+    const [newAnnex, setNewAnnex] = useState({
+        nombre: '',
+        tipo: '',
+        comentarios: '',
+        fechaCarga: '',
+        tamaño: '',
+        archivo: null,
+    });
+
     // Función para cargar usuarios desde el servidor
     const cargarUsuarios = async () => {
         setLoading(true);
         setError(null);
-        
+
         try {
             // Realizar la petición GET al endpoint de usuarios
             const response = await axios.post('/parametros/usuarios');
-            
+
             // Si la petición es exitosa, actualizar el estado
             setUsuarios(response.data);
         } catch (err) {
             console.error('Error al cargar usuarios:', err);
             setError('No se pudieron cargar los usuarios. Intente nuevamente más tarde.');
-            
+
             // Usar los datos de ejemplo definidos arriba
             setUsuarios(usuariosEjemplo);
         } finally {
@@ -73,7 +156,7 @@ export default function Parametros() {
     //fucntion para cargar los municipios
     const cargarMunicipios = async () => {
         setLoading(true);
-        setError(null);        
+        setError(null);
         try {
             const response = await axios.post('/parametros/municipios');
             setMunicipios(response.data);
@@ -89,7 +172,7 @@ export default function Parametros() {
     const cargarProyectos = async () => {
         setLoading(true);
         setError(null);
-        
+
         try {
             const response = await axios.post('/parametros/proyectos');
             setProyectos(response.data);
@@ -99,21 +182,157 @@ export default function Parametros() {
             setProyectos(proyectosData);
         } finally {
             setLoading(false);
-        }   
+        }
     };
 
-    const formatMoneda = (value) => {
-        return new Intl.NumberFormat('es-CO', {
-            style: 'currency',
-            currency: 'COP',
-            minimumFractionDigits: 0,
-        }).format(value);
+    const formatCurrency = (value) => {
+        const numericValue = value.replace(/\D/g, ""); // Solo números
+        return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(numericValue / 100);
+      };
+    
+      const handleChangePresupuesto = (e) => {
+        setNewProject({ ...newProject, presupuesto: e.target.value});
+        setPresupuesto(e.target.value)
     };
 
-    const handlePresupuestoChange = (e) => {
-        setPresupuesto(formatMoneda(e.target.value));
+    // Función para manejar los cambios en el formulario de contrato
+    const handleContractChange = (e) => {
+        const { name, value } = e.target;
+        setNewContract({
+            ...newContract,
+            [name]: value,
+        });
     };
 
+    // Función para agregar un nuevo contrato
+    const handleAddContract = (e) => {
+        e.preventDefault();
+
+        // Validación básica
+        if (!newContract.numero || !newContract.tipo || !newContract.contratista) {
+            alert('Por favor complete los campos obligatorios del contrato');
+            return;
+        }
+
+        // Crear nuevo contrato con ID único
+        const nuevoContrato = {
+            ...newContract,
+            id: Date.now(), // Usar timestamp como ID temporal
+        };
+
+        // Actualizar la lista de contratos
+        setContractsData([...contractsData, nuevoContrato]);
+
+        // Cerrar el modal y resetear el formulario
+        setShowContractModal(false);
+        setNewContract({
+            numero: '',
+            tipo: '',
+            contratista: '',
+            valor: '',
+            fechaFirma: '',
+            duracion: '',
+            objeto: '',
+        });
+    };
+
+    // Función para guardar el proyecto y mostrar la pestaña de contratos
+    const handleGuardarProyecto = () => {
+        // Aquí iría la lógica para guardar el proyecto en el servidor
+        console.log(newProject)
+        axios
+            .post('/parametros/guardarProyectos', newProject)
+            .then((response) => {
+                Swal.fire({
+                    title: 'Proyecto guardado correctamente',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                });
+                setShowContractsTab(true);
+                setShowAnnexesTab(true);
+                setActiveTab('anexos');
+                cargarProyectos();
+            })
+            .catch((error) => {
+                console.error('Error al guardar el proyecto:', error);
+            });
+    };
+
+    // Función para manejar los cambios en el formulario de anexo
+    const handleAnnexChange = (e) => {
+        const { name, value } = e.target;
+        setNewAnnex({
+            ...newAnnex,
+            [name]: value,
+        });
+    };
+
+    // Función para manejar la selección de archivos
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar tamaño máximo (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('El archivo excede el tamaño máximo permitido (10MB)');
+                return;
+            }
+
+            // Formatear el tamaño del archivo para mostrar
+            const formattedSize =
+                file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${Math.round((file.size / (1024 * 1024)) * 10) / 10} MB`;
+
+            setNewAnnex({
+                ...newAnnex,
+                nombre: file.name,
+                tamaño: formattedSize,
+                fechaCarga: new Date().toISOString().split('T')[0],
+                archivo: file,
+            });
+        }
+    };
+
+    // Función para agregar un nuevo anexo
+    const handleAddAnnex = (e) => {
+        e.preventDefault();
+
+        // Validación básica
+        if (!newAnnex.nombre || !newAnnex.tipo) {
+            alert('Por favor seleccione un archivo y especifique el tipo de documento');
+            return;
+        }
+
+        // Crear nuevo anexo con ID único
+        const nuevoAnexo = {
+            ...newAnnex,
+            id: Date.now(), // Usar timestamp como ID temporal
+        };
+
+        // Actualizar la lista de anexos
+        setAnnexesData([...annexesData, nuevoAnexo]);
+
+        // Cerrar el modal y resetear el formulario
+        setShowAnnexModal(false);
+        setNewAnnex({
+            nombre: '',
+            tipo: '',
+            comentarios: '',
+            fechaCarga: '',
+            tamaño: '',
+            archivo: null,
+        });
+    };
+
+    // Función para guardar el contrato y mostrar la pestaña de anexos
+    const handleGuardarContrato = () => {
+        // Aquí iría la lógica para guardar el contrato en el servidor
+        alert('Contrato guardado correctamente');
+
+        // Mostrar la pestaña de anexos después de guardar
+        setShowAnnexesTab(true);
+
+        // Cambiar a la pestaña de anexos
+        setActiveTab('anexos');
+    };
 
     // Efecto para cargar usuarios cuando se selecciona la tarjeta de proyectos
     // o cuando se abre el formulario
@@ -135,8 +354,6 @@ export default function Parametros() {
         }
     }, [selectedCard, showForm]);
 
-
-
     // Renderizar el listado específico según la categoría seleccionada
     const renderListado = () => {
         let data = [];
@@ -145,13 +362,13 @@ export default function Parametros() {
 
         switch (selectedCard) {
             case 'proyectos':
-                data = proyectosData;
+                data = proyectos;
                 title = 'Proyectos Registrados';
                 columns = [
                     { key: 'nombre', label: 'Nombre del Proyecto' },
                     { key: 'descripcion', label: 'Descripción' },
                     { key: 'municipio', label: 'Municipio' },
-                    { key: 'estado', label: 'Estado' }
+                    { key: 'estado', label: 'Estado' },
                 ];
                 break;
             case 'usuarios':
@@ -161,7 +378,7 @@ export default function Parametros() {
                     { key: 'nombre', label: 'Nombre Completo' },
                     { key: 'username', label: 'Usuario' },
                     { key: 'email', label: 'Correo Electrónico' },
-                    { key: 'rol', label: 'Rol' }
+                    { key: 'rol', label: 'Rol' },
                 ];
                 break;
             case 'eventos':
@@ -172,7 +389,7 @@ export default function Parametros() {
                     { key: 'responsable', label: 'Responsable' },
                     { key: 'fecha', label: 'Fecha' },
                     { key: 'hora', label: 'Hora' },
-                    { key: 'tipo', label: 'Tipo' }
+                    { key: 'tipo', label: 'Tipo' },
                 ];
                 break;
             default:
@@ -180,139 +397,42 @@ export default function Parametros() {
         }
 
         return (
-            <div className="w-full max-w-6xl mx-auto mt-8">
-                <div className="bg-white rounded-lg shadow-md">
-                    <div className="p-6 border-b border-gray-200">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-                            <button 
-                                onClick={() => setShowForm(true)}
-                                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span>Nuevo {selectedCard === 'proyectos' ? 'Proyecto' : 
-                                            selectedCard === 'usuarios' ? 'Usuario' : 'Evento'}</span>
-                            </button>
-                        </div>
-                        <div className="mt-4 flex items-center border rounded-lg overflow-hidden">
-                            <Search className="h-5 w-5 text-gray-400 ml-3" />
-                            <input
-                                type="text"
-                                placeholder={`Buscar ${title.toLowerCase()}...`}
-                                className="w-full px-3 py-2 focus:outline-none text-gray-700"
-                            />
-                        </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    {columns.map((column) => (
-                                        <th 
-                                            key={column.key}
-                                            scope="col" 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            {column.label}
-                                        </th>
-                                    ))}
-                                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Acciones
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {data.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50">
-                                        {columns.map((column) => (
-                                            <td key={column.key} className="px-6 py-4 whitespace-nowrap">
-                                                {column.key === 'estado' ? (
-                                                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                                        item[column.key] === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {item[column.key]}
-                                                    </span>
-                                                ) : column.key === 'rol' ? (
-                                                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                                        item[column.key] === 'Administrador' ? 'bg-purple-100 text-purple-800' : 
-                                                        item[column.key] === 'Coordinador' ? 'bg-blue-100 text-blue-800' : 
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                        {item[column.key]}
-                                                    </span>
-                                                ) : column.key === 'tipo' ? (
-                                                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                                        item[column.key] === 'Formulación' ? 'bg-indigo-100 text-indigo-800' : 
-                                                        item[column.key] === 'Presentación' ? 'bg-amber-100 text-amber-800' : 
-                                                        'bg-violet-100 text-violet-800'
-                                                    }`}>
-                                                        {item[column.key]}
-                                                    </span>
-                                                ) : (
-                                                    <div className="text-gray-900">{item[column.key]}</div>
-                                                )}
-                                            </td>
-                                        ))}
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button className="text-indigo-600 hover:text-indigo-900 mr-3">
-                                                <Edit className="h-5 w-5" />
-                                            </button>
-                                            <button className="text-red-600 hover:text-red-900">
-                                                <Trash2 className="h-5 w-5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="p-4 border-t border-gray-200 flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                            Mostrando {data.length} de {data.length} registros
-                        </div>
-                        <div className="flex gap-2">
-                            <button className="px-3 py-1 border rounded text-sm text-gray-600 hover:bg-gray-50">
-                                Anterior
-                            </button>
-                            <button className="px-3 py-1 border rounded text-sm text-gray-600 hover:bg-gray-50">
-                                Siguiente
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <TablaRegistros 
+                title={title}
+                data={data}
+                columns={columns}
+                onAddClick={() => setShowForm(true)}
+                selectedCard={selectedCard}
+            />
         );
     };
 
     // Renderizar el formulario específico según la categoría seleccionada
     const renderForm = () => {
         let title = '';
-        
+
         switch (selectedCard) {
             case 'proyectos':
                 title = 'Nuevo Proyecto';
                 return (
-                    <div className="w-full max-w-2xl mx-auto mt-8">
-                        <div className="bg-white rounded-lg shadow-md">
-                            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <div className="mx-auto mt-8 w-full max-w-10xl">
+                        <div className="rounded-lg bg-white shadow-md">
+                            <div className="flex items-center justify-between border-b border-gray-200 p-6">
                                 <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-                                <button 
-                                    onClick={() => setShowForm(false)}
-                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
-                                >
+                                <button onClick={() => setShowForm(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100">
                                     <ChevronLeft className="h-5 w-5" />
                                     <span className="sr-only">Volver</span>
                                 </button>
                             </div>
-                            
+
                             <div className="border-b border-gray-200">
-                                <nav className="flex -mb-px">
+                                <nav className="flex overflow-x-auto">
                                     <button
                                         onClick={() => setActiveTab('informacion')}
-                                        className={`py-4 px-6 font-medium text-sm border-b-2 ${
+                                        className={`border-b-2 px-6 py-4 text-sm font-medium whitespace-nowrap ${
                                             activeTab === 'informacion'
                                                 ? 'border-indigo-500 text-indigo-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                         }`}
                                     >
                                         <div className="flex items-center space-x-2">
@@ -320,164 +440,227 @@ export default function Parametros() {
                                             <span>Información General</span>
                                         </div>
                                     </button>
-                                    <button
-                                        onClick={() => setActiveTab('anexos')}
-                                        className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                                            activeTab === 'anexos'
-                                                ? 'border-indigo-500 text-indigo-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center space-x-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                            </svg>
-                                            <span>Anexos y Documentos</span>
-                                        </div>
-                                    </button>
+
+                                    {showAnnexesTab && (
+                                        <button
+                                            onClick={() => setActiveTab('anexos')}
+                                            className={`border-b-2 px-6 py-4 text-sm font-medium whitespace-nowrap ${
+                                                activeTab === 'anexos'
+                                                    ? 'border-indigo-500 text-indigo-600'
+                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center space-x-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                                    />
+                                                </svg>
+                                                <span>Anexos y Documentos</span>
+                                            </div>
+                                        </button>
+                                    )}
+
+                                    {showContractsTab && (
+                                        <button
+                                            onClick={() => setActiveTab('contratos')}
+                                            className={`border-b-2 px-6 py-4 text-sm font-medium whitespace-nowrap ${
+                                                activeTab === 'contratos'
+                                                    ? 'border-indigo-500 text-indigo-600'
+                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center space-x-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
+                                                </svg>
+                                                <span>Contratos</span>
+                                            </div>
+                                        </button>
+                                    )}
                                 </nav>
                             </div>
-                            
+
                             <div className="p-6">
                                 <form className="space-y-4">
                                     {activeTab === 'informacion' && (
                                         <>
                                             <div>
-                                             
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Nombre del Proyecto*
-                                                </label>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Nombre del Proyecto*</label>
                                                 <input
                                                     type="text"
-                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                     placeholder="Ej: Construcción de Parque Municipal"
+                                                    value={newProject.nombre}
+                                                    onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
                                                     required
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Descripción*
-                                                </label>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Descripción*</label>
                                                 <textarea
-                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                     placeholder="Detalles del proyecto..."
                                                     rows={3}
+                                                    value={newProject.descripcion}
+                                                    onChange={(e) => setNewProject({ ...newProject, descripcion: e.target.value })}
                                                     required
                                                 ></textarea>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Municipio*
-                                                    </label>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Municipio*</label>
                                                     <div className="relative">
-                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                             <MapPin className="h-5 w-5 text-gray-400" />
                                                         </div>
-                                                        <select 
-                                                            className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        <select
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                             required
+                                                            value={newProject.municipio}
+                                                            onChange={(e) => setNewProject({ ...newProject, municipio: e.target.value })}
                                                         >
                                                             <option value="">Seleccione un municipio</option>
                                                             {municipios.map((municipio) => (
-                                                                <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>
+                                                                <option key={municipio.id} value={municipio.id}>
+                                                                    {municipio.nombre}
+                                                                </option>
                                                             ))}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Fecha de Inicio
-                                                    </label>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Fecha de Inicio</label>
                                                     <input
                                                         type="date"
-                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                        value={newProject.fechaInicio}
+                                                        onChange={(e) => setNewProject({ ...newProject, fechaInicio: e.target.value })}
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Fase del Proyecto
-                                                </label>
-                                                <div className="flex items-center space-x-4">
-                                                
-                                                    <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                                        <option value="">Seleccione un estado</option>
-                                                       
-                                                        {estadosData.map((estado) => (
-                                                            <option key={estado.id} value={estado.id}>{estado.nombre}</option>
-                                                        ))}
-                                                    </select>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Fase del Proyecto</label>
+                                                    <div className="flex items-center space-x-4">
+                                                        <select
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                            value={newProject.fase}
+                                                            onChange={(e) => setNewProject({ ...newProject, fase: e.target.value })}
+                                                        >
+                                                            <option value="">Seleccione un estado</option>
+
+                                                            {estadosData.map((estado) => (
+                                                                <option key={estado.id} value={estado.nombre}>
+                                                                    {estado.nombre}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Estado Proyecto</label>
+                                                    <div className="flex items-center space-x-4">
+                                                        <select
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                            value={newProject.estado}
+                                                            onChange={(e) => setNewProject({ ...newProject, estado: e.target.value })}
+                                                        >
+                                                            <option value="">Seleccione un estado</option>
+                                                            <option value="Activo">Activo</option>
+                                                            <option value="Inactivo">Inactivo</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Estado Proyecto
-                                                </label>
-                                                <div className="flex items-center space-x-4">
-                                                
-                                                    <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                                        <option value="">Seleccione un estado</option>
-                                                        <option value="Activo">Activo</option>
-                                                        <option value="Inactivo">Inactivo</option>
-                                                      
-                                                    </select>
-                                                </div>
-                                            </div>            
-                                            </div>    
-                                           
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Presupuesto Estimado
-                                                    </label>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Presupuesto Estimado</label>
                                                     <div className="relative mt-1 rounded-md shadow-sm">
-                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                            <span className="text-gray-500 sm:text-sm">$</span>
-                                                        </div>
+                                                        
                                                         <input
                                                             type="text"
-                                                            className="w-full rounded-md border border-gray-300 pl-7 pr-12 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            className="w-full rounded-md border border-gray-300 py-2 pr-12 pl-7 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                             required
-                                                            onChange={handlePresupuestoChange}
-                                                            placeholder="0.00"
+                                                            onChange={handleChangePresupuesto}
+                                                            placeholder="$ 0.00"
+                                                            value={newProject.presupuesto}
+                                                            
                                                         />
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Responsable
-                                                    </label>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Responsable</label>
                                                     <div className="relative">
-                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                             <UserIcon className="h-5 w-5 text-gray-400" />
                                                         </div>
-                                                        <select 
-                                                            className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        <select
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                             disabled={loading}
+                                                            value={newProject.responsable}
+                                                            onChange={(e) => setNewProject({ ...newProject, responsable: e.target.value })}
                                                         >
                                                             <option value="">Seleccione un responsable</option>
                                                             {loading ? (
-                                                                <option value="" disabled>Cargando usuarios...</option>
+                                                                <option value="" disabled>
+                                                                    Cargando usuarios...
+                                                                </option>
                                                             ) : error ? (
-                                                                <option value="" disabled>Error al cargar usuarios</option>
+                                                                <option value="" disabled>
+                                                                    Error al cargar usuarios
+                                                                </option>
                                                             ) : (
-                                                                usuarios.map(usuario => (
+                                                                usuarios.map((usuario) => (
                                                                     <option key={usuario.id} value={usuario.id}>
                                                                         {usuario.nombre}
                                                                     </option>
                                                                 ))
                                                             )}
                                                         </select>
-                                                        {error && (
-                                                            <p className="mt-1 text-xs text-red-600">{error}</p>
-                                                        )}
+                                                        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
                                                         {loading && (
-                                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                                <svg className="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            <div className="absolute top-1/2 right-3 -translate-y-1/2 transform">
+                                                                <svg
+                                                                    className="h-5 w-5 animate-spin text-indigo-500"
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <circle
+                                                                        className="opacity-25"
+                                                                        cx="12"
+                                                                        cy="12"
+                                                                        r="10"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="4"
+                                                                    ></circle>
+                                                                    <path
+                                                                        className="opacity-75"
+                                                                        fill="currentColor"
+                                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                                    ></path>
                                                                 </svg>
                                                             </div>
                                                         )}
@@ -485,10 +668,12 @@ export default function Parametros() {
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Categoría del Proyecto
-                                                </label>
-                                                <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Categoría del Proyecto</label>
+                                                <select
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    value={newProject.categoria}
+                                                    onChange={(e) => setNewProject({ ...newProject, categoria: e.target.value })}
+                                                >
                                                     <option value="">Seleccione una categoría</option>
                                                     <option value="Infraestructura">Infraestructura</option>
                                                     <option value="Educación">Educación</option>
@@ -497,241 +682,659 @@ export default function Parametros() {
                                                     <option value="Medio Ambiente">Medio Ambiente</option>
                                                 </select>
                                             </div>
+
+                                            {/* Botones de acción para la pestaña información */}
+                                            <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowForm(false)}
+                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGuardarProyecto}
+                                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                                >
+                                                    Guardar Proyecto
+                                                </button>
+                                            </div>
                                         </>
                                     )}
-                                    
+
                                     {activeTab === 'anexos' && (
                                         <div className="space-y-6">
-                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                                <div className="mx-auto h-12 w-12 text-gray-400">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                    </svg>
+                                            {/* Mensaje de éxito al guardar proyecto */}
+                                            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <svg
+                                                            className="h-5 w-5 text-green-400"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <h3 className="text-sm font-medium text-green-800">Proyecto guardado correctamente</h3>
+                                                        <div className="mt-2 text-sm text-green-700">
+                                                            <p>
+                                                                La información general del proyecto ha sido guardada. Ahora puede gestionar los
+                                                                documentos anexos del proyecto.
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-2 flex text-sm text-gray-600 justify-center">
-                                                    <label 
-                                                        htmlFor="file-upload" 
-                                                        className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-                                                    >
-                                                        <span>Subir archivos</span>
-                                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple />
-                                                    </label>
-                                                    <p className="pl-1">o arrastre y suelte aquí</p>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    PDF, Word, Excel o imágenes (máximo 10MB por archivo)
-                                                </p>
                                             </div>
 
-                                            <div className="bg-gray-50 rounded-lg p-4">
-                                                <h4 className="text-sm font-medium text-gray-700 mb-3">Archivos seleccionados:</h4>
-                                                <ul className="space-y-2">
-                                                    <li className="flex items-center justify-between bg-white rounded-md p-2 shadow-sm">
-                                                        <div className="flex items-center">
-                                                            <div className="p-1.5 bg-red-100 rounded mr-2">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className="font-medium text-gray-900">Planos_Proyecto.pdf</p>
-                                                                <p className="text-gray-500 text-xs">1.2 MB - PDF</p>
-                                                            </div>
-                                                        </div>
-                                                        <button type="button" className="text-gray-400 hover:text-red-500">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    </li>
-                                                    <li className="flex items-center justify-between bg-white rounded-md p-2 shadow-sm">
-                                                        <div className="flex items-center">
-                                                            <div className="p-1.5 bg-green-100 rounded mr-2">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="text-sm">
-                                                                <p className="font-medium text-gray-900">Presupuesto_Detallado.xlsx</p>
-                                                                <p className="text-gray-500 text-xs">524 KB - Excel</p>
-                                                            </div>
-                                                        </div>
-                                                        <button type="button" className="text-gray-400 hover:text-red-500">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                                <div className="mt-2 flex justify-between text-sm">
-                                                    <span className="text-gray-500">2 archivos seleccionados</span>
-                                                    <button 
-                                                        type="button"
-                                                        className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                            {/* Header con título y botón para añadir anexo */}
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-medium text-gray-800">Anexos del Proyecto</h3>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAnnexModal(true)}
+                                                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
                                                     >
-                                                        Eliminar todos
-                                                    </button>
-                                                </div>
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                    <span>Añadir Documento</span>
+                                                </button>
                                             </div>
-                                            
-                                            <div className="rounded-lg border border-gray-200 p-4">
-                                                <h4 className="text-sm font-medium text-gray-700 mb-3">Clasificación de documentos</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                            Tipo de documento
-                                                        </label>
-                                                        <select className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                                            <option value="">Seleccionar tipo</option>
-                                                            <option value="planos">Planos</option>
-                                                            <option value="presupuesto">Presupuesto</option>
-                                                            <option value="contrato">Contrato</option>
-                                                            <option value="informe">Informe técnico</option>
-                                                            <option value="otro">Otro</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                            Etapa del proyecto
-                                                        </label>
-                                                        <select className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                                            <option value="">Seleccionar etapa</option>
-                                                            <option value="planificacion">Planificación</option>
-                                                            <option value="ejecucion">Ejecución</option>
-                                                            <option value="seguimiento">Seguimiento</option>
-                                                            <option value="cierre">Cierre</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3">
-                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                        Comentarios sobre el documento
-                                                    </label>
-                                                    <textarea
-                                                        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                        placeholder="Añada comentarios sobre este documento..."
-                                                        rows={2}
-                                                    ></textarea>
-                                                </div>
+
+                                            {/* Tabla de anexos */}
+                                            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                                                <table className="min-w-full divide-y divide-gray-200">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Nombre
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Tipo
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Comentarios
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Fecha
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Tamaño
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Acciones
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                                        {annexesData.length > 0 ? (
+                                                            annexesData.map((annex) => (
+                                                                <tr key={annex.id} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
+                                                                        {annex.nombre}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {annex.tipo}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {annex.comentarios}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {annex.fechaCarga}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {annex.tamaño}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                                                                        <button className="mr-3 text-indigo-600 hover:text-indigo-900">
+                                                                            <Edit className="h-5 w-5" />
+                                                                        </button>
+                                                                        <button className="text-red-600 hover:text-red-900">
+                                                                            <Trash2 className="h-5 w-5" />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                                                                    No hay documentos anexos para este proyecto. Haga clic en "Añadir Documento" para
+                                                                    agregar uno.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Botones de acciones */}
+                                            <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveTab('informacion')}
+                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Volver a Información
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveTab('contratos')}
+                                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                                >
+                                                    Continuar a Contratos
+                                                </button>
                                             </div>
                                         </div>
                                     )}
-                                    
-                                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowForm(false)}
-                                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        {activeTab === 'informacion' ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveTab('anexos')}
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                            >
-                                                Continuar a Anexos
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                            >
-                                                Guardar Proyecto
-                                            </button>
-                                        )}
-                                    </div>
+
+                                    {activeTab === 'contratos' && (
+                                        <div className="space-y-6">
+                                            {/* Mensaje de éxito al guardar proyecto */}
+                                            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <svg
+                                                            className="h-5 w-5 text-green-400"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <h3 className="text-sm font-medium text-green-800">Proyecto guardado correctamente</h3>
+                                                        <div className="mt-2 text-sm text-green-700">
+                                                            <p>
+                                                                La información general del proyecto ha sido guardada. Ahora puede gestionar los
+                                                                contratos asociados a este proyecto.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Header con título y botón para añadir contrato */}
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-medium text-gray-800">Contratos Asociados</h3>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowContractModal(true)}
+                                                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                    <span>Añadir Contrato</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Tabla de contratos */}
+                                            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                                                <table className="min-w-full divide-y divide-gray-200">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                N° Contrato
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Tipo
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Contratista
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Valor
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Fecha Firma
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Duración
+                                                            </th>
+                                                            <th
+                                                                scope="col"
+                                                                className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase"
+                                                            >
+                                                                Acciones
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                                        {contractsData.length > 0 ? (
+                                                            contractsData.map((contract) => (
+                                                                <tr key={contract.id} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900">
+                                                                        {contract.numero}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {contract.tipo}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {contract.contratista}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {contract.valor}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {contract.fechaFirma}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                                                                        {contract.duracion}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                                                                        <button className="mr-3 text-indigo-600 hover:text-indigo-900">
+                                                                            <Edit className="h-5 w-5" />
+                                                                        </button>
+                                                                        <button className="text-red-600 hover:text-red-900">
+                                                                            <Trash2 className="h-5 w-5" />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
+                                                                    No hay contratos asociados a este proyecto. Haga clic en "Añadir Contrato" para
+                                                                    crear uno.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Botones de acciones */}
+                                            <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveTab('informacion')}
+                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Volver
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </form>
                             </div>
+
+                            {/* Modal para añadir contrato */}
+                            {showContractModal && (
+                                <div className="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-600">
+                                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl">
+                                        <div className="flex items-center justify-between border-b border-gray-200 p-6">
+                                            <h3 className="text-xl font-bold text-gray-800">Nuevo Contrato</h3>
+                                            <button
+                                                onClick={() => setShowContractModal(false)}
+                                                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-6 w-6"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <form onSubmit={handleAddContract} className="space-y-4 p-6">
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Número de Contrato*</label>
+                                                    <input
+                                                        type="text"
+                                                        name="numero"
+                                                        value={newContract.numero}
+                                                        onChange={handleContractChange}
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                        placeholder="Ej: CTR-2023-001"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Tipo de Contrato*</label>
+                                                    <select
+                                                        name="tipo"
+                                                        value={newContract.tipo}
+                                                        onChange={handleContractChange}
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                        required
+                                                    >
+                                                        <option value="">Seleccione un tipo</option>
+                                                        <option value="Obra">Contrato de Obra</option>
+                                                        <option value="Consultoría">Consultoría</option>
+                                                        <option value="Servicios">Prestación de Servicios</option>
+                                                        <option value="Suministro">Suministro</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Contratista*</label>
+                                                <input
+                                                    type="text"
+                                                    name="contratista"
+                                                    value={newContract.contratista}
+                                                    onChange={handleContractChange}
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    placeholder="Nombre o razón social del contratista"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Valor del Contrato</label>
+                                                    <div className="relative">
+                                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                            <span className="text-gray-500 sm:text-sm">$</span>
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            name="valor"
+                                                            value={newContract.valor}
+                                                            onChange={handleContractChange}
+                                                            className="w-full rounded-md border border-gray-300 px-3 py-2 pl-7 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                            placeholder="0.00"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Fecha de Firma</label>
+                                                    <input
+                                                        type="date"
+                                                        name="fechaFirma"
+                                                        value={newContract.fechaFirma}
+                                                        onChange={handleContractChange}
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Duración</label>
+                                                <input
+                                                    type="text"
+                                                    name="duracion"
+                                                    value={newContract.duracion}
+                                                    onChange={handleContractChange}
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    placeholder="Ej: 6 meses"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Objeto del Contrato</label>
+                                                <textarea
+                                                    name="objeto"
+                                                    value={newContract.objeto}
+                                                    onChange={handleContractChange}
+                                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    placeholder="Descripción del objeto del contrato"
+                                                    rows={3}
+                                                ></textarea>
+                                            </div>
+
+                                            <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowContractModal(false)}
+                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
+                                                    Guardar Contrato
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Modal para añadir anexo */}
+                            {showAnnexModal && (
+                                <div className="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-600">
+                                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl">
+                                        <div className="flex items-center justify-between border-b border-gray-200 p-6">
+                                            <h3 className="text-xl font-bold text-gray-800">Nuevo Anexo</h3>
+                                            <button
+                                                onClick={() => setShowAnnexModal(false)}
+                                                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-6 w-6"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <form onSubmit={handleAddAnnex} className="space-y-4 p-6">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Archivo*</label>
+                                                    <div className="rounded-lg border-2 border-dashed border-gray-300 p-4 text-center">
+                                                        <input type="file" id="annex-file" onChange={handleFileChange} className="hidden" />
+                                                        <label
+                                                            htmlFor="annex-file"
+                                                            className="flex cursor-pointer flex-col items-center justify-center"
+                                                        >
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-10 w-10 text-gray-400"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                                                />
+                                                            </svg>
+                                                            <span className="mt-2 text-sm text-gray-600">
+                                                                Haga clic para seleccionar un archivo o arrástrelo aquí
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Tipo de Documento*</label>
+                                                    <select
+                                                        name="tipo"
+                                                        value={newAnnex.tipo}
+                                                        onChange={handleAnnexChange}
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                        required
+                                                    >
+                                                        <option value="">Seleccione un tipo</option>
+                                                        <option value="Acta">Acta</option>
+                                                        <option value="Garantía">Garantía</option>
+                                                        <option value="Póliza">Póliza</option>
+                                                        <option value="Certificado">Certificado</option>
+                                                        <option value="Otro">Otro</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-sm font-medium text-gray-700">Comentarios</label>
+                                                    <textarea
+                                                        name="comentarios"
+                                                        value={newAnnex.comentarios}
+                                                        onChange={handleAnnexChange}
+                                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                        placeholder="Descripción o información adicional del documento"
+                                                        rows={3}
+                                                    ></textarea>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAnnexModal(false)}
+                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
+                                                    Guardar Anexo
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
-                
+
             case 'usuarios':
                 title = 'Nuevo Usuario';
                 return (
-                    <div className="w-full max-w-2xl mx-auto mt-8">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <div className="mb-4 flex justify-between items-center">
+                    <div className="mx-auto mt-8 w-full max-w-2xl">
+                        <div className="rounded-lg bg-white p-6 shadow-md">
+                            <div className="mb-4 flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-                                <button 
-                                    onClick={() => setShowForm(false)}
-                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
-                                >
+                                <button onClick={() => setShowForm(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100">
                                     <ChevronLeft className="h-5 w-5" />
                                     <span className="sr-only">Volver</span>
                                 </button>
                             </div>
                             <form className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Nombre Completo
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Nombre Completo</label>
                                         <input
                                             type="text"
-                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                             placeholder="Ej: Juan Pérez"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Nombre de Usuario
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Nombre de Usuario</label>
                                         <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                 <UserIcon className="h-5 w-5 text-gray-400" />
                                             </div>
                                             <input
                                                 type="text"
-                                                className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                                 placeholder="Ej: jperez"
                                             />
                                         </div>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Correo Electrónico
-                                    </label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Correo Electrónico</label>
                                     <input
                                         type="email"
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                         placeholder="Ej: juan.perez@ejemplo.com"
                                     />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Contraseña
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
                                         <input
                                             type="password"
-                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                             placeholder="********"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Confirmar Contraseña
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Confirmar Contraseña</label>
                                         <input
                                             type="password"
-                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                             placeholder="********"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Rol
-                                    </label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Rol</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                             <Shield className="h-5 w-5 text-gray-400" />
                                         </div>
-                                        <select className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <select className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                             <option value="">Seleccione un rol</option>
                                             <option value="Administrador">Administrador</option>
                                             <option value="Coordinador">Coordinador</option>
@@ -743,14 +1346,11 @@ export default function Parametros() {
                                     <button
                                         type="button"
                                         onClick={() => setShowForm(false)}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                        className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
                                     >
                                         Cancelar
                                     </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                    >
+                                    <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
                                         Crear Usuario
                                     </button>
                                 </div>
@@ -758,42 +1358,35 @@ export default function Parametros() {
                         </div>
                     </div>
                 );
-                
+
             case 'eventos':
                 title = 'Nuevo Evento';
                 return (
-                    <div className="w-full max-w-2xl mx-auto mt-8">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <div className="mb-4 flex justify-between items-center">
+                    <div className="mx-auto mt-8 w-full max-w-2xl">
+                        <div className="rounded-lg bg-white p-6 shadow-md">
+                            <div className="mb-4 flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-                                <button 
-                                    onClick={() => setShowForm(false)}
-                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
-                                >
+                                <button onClick={() => setShowForm(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100">
                                     <ChevronLeft className="h-5 w-5" />
                                     <span className="sr-only">Volver</span>
                                 </button>
                             </div>
                             <form className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Descripción del Evento
-                                    </label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Descripción del Evento</label>
                                     <textarea
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                         placeholder="Ej: Reunión de seguimiento de proyecto"
                                         rows={2}
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Responsable
-                                    </label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Responsable</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                             <UserIcon className="h-5 w-5 text-gray-400" />
                                         </div>
-                                        <select className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <select className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                             <option value="">Seleccione un responsable</option>
                                             <option value="Ana Martinez">Ana Martinez</option>
                                             <option value="Carlos Gomez">Carlos Gomez</option>
@@ -801,36 +1394,30 @@ export default function Parametros() {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Fecha
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Fecha</label>
                                         <input
                                             type="date"
-                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Hora
-                                        </label>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Hora</label>
                                         <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                 <Clock className="h-5 w-5 text-gray-400" />
                                             </div>
                                             <input
                                                 type="time"
-                                                className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                             />
                                         </div>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tipo de Evento
-                                    </label>
-                                    <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Tipo de Evento</label>
+                                    <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                         <option value="">Seleccione un tipo</option>
                                         <option value="Formulación">Formulación</option>
                                         <option value="Presentación">Presentación</option>
@@ -838,14 +1425,12 @@ export default function Parametros() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Municipio Relacionado
-                                    </label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Municipio Relacionado</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                             <MapPin className="h-5 w-5 text-gray-400" />
                                         </div>
-                                        <select className="w-full rounded-md border border-gray-300 pl-10 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <select className="w-full rounded-md border border-gray-300 px-3 py-2 pl-10 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                             <option value="">Seleccione un municipio</option>
                                             <option value="Agua Chica">Agua Chica</option>
                                             <option value="San Juan">San Juan</option>
@@ -858,14 +1443,11 @@ export default function Parametros() {
                                     <button
                                         type="button"
                                         onClick={() => setShowForm(false)}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                        className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
                                     >
                                         Cancelar
                                     </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                    >
+                                    <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">
                                         Programar Evento
                                     </button>
                                 </div>
@@ -873,7 +1455,7 @@ export default function Parametros() {
                         </div>
                     </div>
                 );
-                
+
             default:
                 return null;
         }
@@ -882,7 +1464,7 @@ export default function Parametros() {
     return (
         <>
             <Head title="Parámetros - Gestión de Proyectos" />
-            
+
             <div className="min-h-screen bg-gray-100 pb-12">
                 {/* Barra superior */}
                 <div className="flex items-center justify-between bg-white p-6 shadow-sm">
@@ -890,10 +1472,7 @@ export default function Parametros() {
                         <h1 className="text-xl font-bold text-gray-800">Configuración de Parámetros</h1>
                         <p className="text-sm text-gray-500">Gestione los parámetros del sistema de proyectos</p>
                     </div>
-                    <Link 
-                        href={route('dashboard')} 
-                        className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800"
-                    >
+                    <Link href={route('dashboard')} className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800">
                         <ChevronLeft className="h-5 w-5" />
                         <span>Volver al Dashboard</span>
                     </Link>
@@ -914,75 +1493,41 @@ export default function Parametros() {
 
                             {/* Tarjetas de configuración */}
                             {!selectedCard && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                                     {/* Tarjeta de Proyectos */}
-                                    <div 
-                                        className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
-                                        onClick={() => setSelectedCard('proyectos')}
-                                    >
-                                        <div className="p-1 bg-blue-500"></div>
-                                        <div className="p-6">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="p-3 bg-blue-100 rounded-full">
-                                                    <FolderIcon className="h-7 w-7 text-blue-600" />
-                                                </div>
-                                                <h3 className="text-lg font-bold text-gray-800">Proyectos</h3>
-                                            </div>
-                                            <p className="text-gray-500 mb-4">Gestione los proyectos con información detallada, municipios y estados correspondientes.</p>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-blue-600">{proyectosData.length} proyectos registrados</span>
-                                                <div className="p-2 rounded-full bg-blue-50">
-                                                    <Settings className="h-5 w-5 text-blue-600" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                                    <CardParametros 
+                                    title="Proyectos" 
+                                    description="Gestione los proyectos con información detallada, municipios y estados correspondientes." 
+                                    count={proyectosData.length}
+                                    color="blue"
+                                    icon={FolderIcon}
+                                    onClick={() => setSelectedCard('proyectos')}
+                                    />
 
                                     {/* Tarjeta de Eventos */}
-                                    <div 
-                                        className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
-                                        onClick={() => setSelectedCard('eventos')}
-                                    >
-                                        <div className="p-1 bg-amber-500"></div>
-                                        <div className="p-6">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="p-3 bg-amber-100 rounded-full">
-                                                    <Calendar className="h-7 w-7 text-amber-600" />
-                                                </div>
-                                                <h3 className="text-lg font-bold text-gray-800">Eventos</h3>
-                                            </div>
-                                            <p className="text-gray-500 mb-4">Gestione eventos con responsables, fechas y municipios relacionados.</p>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-amber-600">{eventosData.length} eventos programados</span>
-                                                <div className="p-2 rounded-full bg-amber-50">
-                                                    <Settings className="h-5 w-5 text-amber-600" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                     {/* Tarjeta de Usuarios */}
-                                     <div 
-                                        className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
-                                        onClick={() => setSelectedCard('usuarios')}
-                                    >
-                                        <div className="p-1 bg-purple-500"></div>
-                                        <div className="p-6">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="p-3 bg-purple-100 rounded-full">
-                                                    <UserIcon className="h-7 w-7 text-purple-600" />
-                                                </div>
-                                                <h3 className="text-lg font-bold text-gray-800">Usuarios</h3>
-                                            </div>
-                                            <p className="text-gray-500 mb-4">Administre usuarios del sistema, nombres, roles y credenciales de acceso.</p>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-purple-600">{usuarios.length} usuarios activos</span>
-                                                <div className="p-2 rounded-full bg-purple-50">
-                                                    <Settings className="h-5 w-5 text-purple-600" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <CardParametros 
+                                    title="Eventos" 
+                                    description="Gestione eventos con responsables, fechas y municipios relacionados." 
+                                    count={eventosData.length}
+                                    color="amber"
+                                    icon={Calendar}
+                                    onClick={() => setSelectedCard('eventos')}
+                                    />
+                                  
+
+                                    {/* Tarjeta de Usuarios */}
+                                     
+                                    <CardParametros  
+                                    title="Usuarios" 
+                                    description="Administre usuarios del sistema, nombres, roles y credenciales de acceso." 
+                                    count={usuarios.length}
+                                    color="purple"
+                                    icon={UserIcon}
+                                    onClick={() => setSelectedCard('usuarios')}
+                                    />
+                                    
                                 </div>
                             )}
                         </>
@@ -999,7 +1544,7 @@ export default function Parametros() {
                         <div className="mt-6 flex justify-center">
                             <button
                                 onClick={() => setSelectedCard(null)}
-                                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                                 Volver a categorías
@@ -1010,4 +1555,4 @@ export default function Parametros() {
             </div>
         </>
     );
-} 
+}
